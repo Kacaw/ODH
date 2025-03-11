@@ -147,32 +147,12 @@ class amis_moedict {
                 span.eng_sent {margin-right: 5px;}
                 span.chn_sent {color: #0d47a1;}
                 span.mdn_sent {color: #7d7979;}
-                /* 調整 ODH 視窗尺寸，提供彈性範圍 */
+                /* 固定 ODH 視窗尺寸為 600px 寬、800px 高 */
                 .odh-result-window {
-                    min-width: 400px !important;
-                    max-width: 800px !important;
-                    min-height: 200px !important;
-                    max-height: 80vh !important;
+                    width: 600px !important;
+                    height: 800px !important;
                     overflow-y: auto !important;
                 }
-            </style>
-            <script>
-                // 動態調整視窗大小
-                function adjustWindowSize() {
-                    const windowElement = document.querySelector('.odh-result-window');
-                    if (windowElement) {
-                        const content = windowElement.querySelector('.content') || windowElement; // 假設內容在 .content 內，如果沒有則用整個視窗
-                        const contentHeight = content.scrollHeight; // 內容的實際高度
-                        const maxHeight = window.innerHeight * 0.8; // 最大高度為螢幕 80%
-                        const minHeight = 200; // 最小高度
-                        const newHeight = Math.min(Math.max(contentHeight + 20, minHeight), maxHeight); // +20 留點邊距
-                        windowElement.style.height = `${newHeight}px`;
-                    }
-                }
-                // 在 DOM 加載完成後調整
-                document.addEventListener('DOMContentLoaded', adjustWindowSize);
-                // 當視窗內容改變時重新調整（例如動態加載）
-                window.addEventListener('resize', adjustWindowSize);
-            </script>`;
+            </style>`;
     }
 }
