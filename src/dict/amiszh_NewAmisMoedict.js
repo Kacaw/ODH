@@ -1,5 +1,5 @@
 /* global api */
-class amis_moedict {
+class twtw_moedict {
     constructor(options) {
         this.options = options;
         this.maxexample = 2;
@@ -8,9 +8,9 @@ class amis_moedict {
 
     async displayName() {
         let locale = await api.locale();
-        if (locale.indexOf('TW') != -1) return '萌典阿美語詞典';
-        if (locale.indexOf('ZH') != -1) return '萌典阿美语词典';
-        return 'Amis Dictionary';
+        if (locale.indexOf('TW') != -1) return '萌典台語詞典';
+        if (locale.indexOf('ZH') != -1) return '萌典台语词典';
+        return 'Taiwanese Dictionary';
     }
 
     setOptions(options) {
@@ -23,8 +23,8 @@ class amis_moedict {
         let results = [];
         if (!word) return results; // empty query
 
-        let base = 'https://new-amis.moedict.tw/terms/api/dictionary/';
-        let url = `${base}${word}`;
+        let base = 'https://www.moedict.tw/t/';
+        let url = `${base}${word}.json`;
         try {
             let data = await api.fetch(url);
             let json = JSON.parse(data);
@@ -48,7 +48,7 @@ class amis_moedict {
             }
         }
         if (definitions.length > 0) {
-            expression = `<div class='amis_moedict'>${definitions.join('')}</div>`;
+            expression = `<div class='twtw_moedict'>${definitions.join('')}</div>`;
         }
         return expression;
     }
