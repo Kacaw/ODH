@@ -2,7 +2,7 @@
 class amis_moedict {
     constructor(options) {
         this.options = options;
-        this.maxexample = 2;
+        this.maxexample = 2; // 雖然現在不使用，但保留以備後用
         this.word = '';
     }
 
@@ -91,7 +91,6 @@ class amis_moedict {
                         if (examples.length > 0) {
                             definition += '<ul class="sents">';
                             for (const [index, example] of examples.entries()) {
-                                if (index >= this.maxexample) break;
                                 let exampleText = T(example).replace(RegExp(expression, 'gi'), `<b>${expression}</b>`);
                                 if (exampleText) {
                                     definition += `<li class='sent'><span class='eng_sent'>${exampleText}</span></li>`;
