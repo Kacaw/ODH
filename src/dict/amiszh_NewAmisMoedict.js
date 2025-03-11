@@ -1,86 +1,92 @@
-/* global api */
-class amiszh_NewAmisMoedict {
-    constructor(options) {
-        this.options = options || {};
-        this.baseUrl = "https://new-amis.moedict.tw/terms/";
-        console.log("Constructor initialized");
+// ==UserScript==
+// @name         在線詞典助手 - 阿美語版
+// @namespace    http://tampermonkey.net/
+// @version      0.1
+// @description  整合阿美語詞典到在線詞典助手
+// @author       Modified from flyingmars's twtw_moedict.js
+// @match        *://*/*
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // 註冊字典
+    if (window.ODH && window.ODH.register) {
+        window.ODH.register({
+            name: 'amis_moedict',
+            description: '阿美語詞典 (萌典)',
+            url: 'https://new-amis.moedict.tw/terms/',
+            search: searchWord
+        });
     }
 
-    async displayName() {
-        try {
-            let locale = await api.locale();
-            console.log("Locale:", locale);
-            if (locale.indexOf('CN') != -1) return '阿美語萌典 (線上)';
-            if (locale.indexOf('TW') != -1) return '阿美語萌典 (線上)';
-            return 'New Amis Moedict (Online)';
-        } catch (e) {
-            console.error("Error in displayName:", e);
-            return 'New Amis Moedict (Online)';
-        }
-    }
-
-    setOptions(options) {
-        this.options = options || {};
-        console.log("Options set:", options);
-    }
-
-    async findTerm(word) {
-        console.log("Finding term:", word);
+    // 搜尋函數
+    function searchWord(word, callback) {
+        // 清理輸入詞
+        word = word.trim();
         if (!word) {
-            console.log("No word provided");
-            return [];
+            callback({error: '請輸入查詢詞'});
+            return;
         }
-        this.word = word;
-        return this.findAmisWord(word);
+
+        // 構建查詢URL
+        const url = `https://new-amis.moedict.tw/terms/api/dictionary/${encodeURIComponent(word)}`;
+        
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: url,
+            headers: {
+                'Accept': 'application/json'
+            },
+            onload: function(response) {
+                try {
+                    const data = JSON.parse(response.responseText);
+                    if (data && data.translation) {
+                        // 格式化結果
+                        let result = formatResult(data);
+                        callback({content: result});
+                    } else {
+                        callback({content: '查無結果'});
+                    }
+                } catch (e) {
+                    callback({error: '解析錯誤: ' + e.message});
+                }
+            },
+            onerror: function() {
+                callback({error: '網路錯誤，請稍後再試'});
+            }
+        });
     }
 
-    async findAmisWord(word) {
-        console.log("Starting findAmisWord for:", word);
-        let notes = [];
-
-        try {
-            if (!api || typeof api.requestXHR !== 'function') {
-                console.error("API not available");
-                return notes;
+    // 格式化查詢結果
+    function formatResult(data) {
+        let result = `<div><h3>${data.title || ''}</h3>`;
+        
+        // 添加翻譯
+        if (data.translation) {
+            result += '<div><b>翻譯:</b><ul>';
+            for (let lang in data.translation) {
+                result += `<li>${lang}: ${data.translation[lang]}</li>`;
             }
+            result += '</ul></div>';
+        }
 
-            const queryUrl = `${this.baseUrl}${encodeURIComponent(word)}`;
-            console.log("Requesting URL:", queryUrl);
-            const html = await api.requestXHR(queryUrl);
-            console.log("Received HTML length:", html ? html.length : 0);
+        // 添加其他資訊（如果有的話）
+        if (data.definition) {
+            result += `<div><b>定義:</b> ${data.definition}</div>`;
+        }
 
-            if (!html) {
-                console.log("No HTML received");
-                return notes;
-            }
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, "text/html");
-            const dictName = doc.querySelector("div[class*='bg-']")?.innerText.trim() || "無字典";
-            const definition = doc.querySelector("ol.list-decimal li p")?.innerText || "無定義";
-
-            const css = this.renderCSS();
-            notes.push({
-                css,
-                expression: word,
-                reading: "",
-                extrainfo: "",
-                definitions: [`<div class="dict-name">${dictName}</div>`, `<p>${definition}</p>`],
-                audios: []
+        if (data.example) {
+            result += '<div><b>例句:</b><ul>';
+            data.example.forEach(ex => {
+                result += `<li>${ex}</li>`;
             });
-            console.log("Returning notes:", notes);
-            return notes;
-        } catch (error) {
-            console.error("Error in findAmisWord:", error);
-            return notes;
+            result += '</ul></div>';
         }
+
+        result += '</div>';
+        return result;
     }
 
-    renderCSS() {
-        return `
-            <style>
-                .dict-name {font-weight: bold; color: #ffffff; background-color: #0d47a1; padding: 4px 8px; margin-bottom: 5px; border-radius: 3px;}
-                p {margin: 5px 0;}
-            </style>`;
-    }
-}
+})();
