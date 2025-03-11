@@ -147,12 +147,6 @@ class amis_moedict {
                 span.eng_sent {margin-right: 5px;}
                 span.chn_sent {color: #0d47a1;}
                 span.mdn_sent {color: #7d7979;}
-                /* 固定 ODH 視窗尺寸為 600px 寬、800px 高 */
-                .odh-result-window {
-                    width: 600px !important;
-                    height: 800px !important;
-                    overflow-y: auto !important;
-                }
             </style>`;
     }
 }
