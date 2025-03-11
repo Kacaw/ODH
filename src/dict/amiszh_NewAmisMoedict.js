@@ -20,23 +20,20 @@ class amis_moedict {
 
     async findTerm(word) {
         this.word = word;
-        let promises = [this.findMoedict(word)]; // 只保留 findMoedict，因為 Suisiann 是台語專用
-        let results = await Promise.all(promises);
-        return [].concat(...results).filter(x => x);
+        let results = await this.findMoedict(word);
+        return results.filter(x => x);
     }
 
     async findMoedict(word) {
         let notes = [];
-        if (!word) return notes; // return empty notes
+        if (!word) return notes;
 
         function T(node) {
-            if (!node)
-                return '';
-            else
-                return node.innerText.trim();
+            if (!node) return '';
+            return node.innerText.trim();
         }
 
-        let base = "https://new-amis.moedict.tw/terms/api/dictionary/";
+        let base = "https://new-amis.moedict.tw/terms/";
         let url = base + encodeURIComponent(word);
         let doc = '';
         try {
@@ -47,79 +44,72 @@ class amis_moedict {
             return [];
         }
 
-        let entries = doc.querySelectorAll('#result>div>div:not(.xrefs)') || [];
+        // 詞條名稱
+        let expression = T(doc.querySelector('h1')) || word;
+        expression = expression.replace(/（詞幹）/, '').trim();
 
+        // 所有字典區塊
+        let entries = doc.querySelectorAll('.dictionaries') || [];
         for (const entry of entries) {
             let definitions = [];
             let audios = [];
-            
-            let expression = '' ;
-            let allWords = entry.querySelectorAll('h1 rb');
-            for(const innerWords of allWords){
-                expression += T(innerWords);
-            }
 
+            // 字典名稱
+            let dictName = T(entry.querySelector('.p-2')) || '未知字典';
+
+            // 發音（如果有）
             let reading = '';
-            let readings = entry.querySelectorAll('h1 rt');
-            reading = T(readings[0]);
-            
-            // 其它發音
-            let alternatives = entry.querySelectorAll('h1>small.alternative>.pinyin');
-            for(const innerWords of alternatives){
-                reading += ", " + T(innerWords);
-            }            
-            
-            let entryItem = entry.querySelectorAll('.entry-item') || [];
-            
-            for (const ent of entryItem) {
-                let definition = '';
-                
-                // 同音不同詞性部份
-                let partOfSpeech = ent.querySelectorAll('.part-of-speech') ;
-                let pos = T(partOfSpeech[0]);
-                pos = pos ? `<span class='pos'>${pos}</span><br>` : '';
-                definition += pos;
-                
-                let moeDefines = ent.querySelectorAll('.definition') ;
-                for (const moeDefine of moeDefines){
-                    let defExp = moeDefine.querySelectorAll('.def') ;
-                    let eng_tran = T(defExp[0]);
-                    let tran = `<span class='tran'>${eng_tran}</span>`
-                    definition += tran ;
-                    
-                    let examples = moeDefine.querySelectorAll('.example') ;
-                    if ( examples.length > 0 ){
+            let readingNode = entry.querySelector('.term-into .text-slate-400');
+            if (readingNode) reading = T(readingNode);
+
+            // 音訊
+            let audioNode = entry.querySelector('audio');
+            if (audioNode) audios.push(audioNode.getAttribute('src'));
+
+            // 詞頻（如果有）
+            let freqNode = entry.querySelector('.ilrdf-term-info .text-sm');
+            let frequency = freqNode ? T(freqNode) : '';
+
+            // 定義列表
+            let defList = entry.querySelector('ol.list-decimal');
+            if (defList) {
+                let defItems = defList.querySelectorAll('li');
+                for (const item of defItems) {
+                    let definition = '';
+
+                    // 主定義
+                    let mainDef = T(item.querySelector('p:first-child')) || '';
+                    definition += `<span class='tran'>${mainDef}</span>`;
+
+                    // 例句或子定義
+                    let subList = item.querySelector('ul.list-disc');
+                    if (subList) {
                         definition += '<ul class="sents">';
-                        for (const example of examples){
-                            // 假設阿美語也有類似結構，保留原始邏輯
-                            let exampleHref = example.querySelectorAll('hruby a');
-                            let exampleSentences = "";
-                            for (const word of exampleHref ){
-                                exampleSentences += T(word) ;
-                            }
-                            
-                            let exampleRts = example.querySelectorAll('rt');
-                            let examplePronouciation = "";
-                            for (const exampleRt of exampleRts ){
-                                let dirtyWord = T(exampleRt);
-                                examplePronouciation += dirtyWord + " " ;
-                            }                        
-                            
-                            let exampleMandrin = example.querySelectorAll('.mandarin');
-                            let exampleMandrinStr = T(exampleMandrin[0]);
-                            
-                            definition += `<li class='sent'><span class='eng_sent'>${exampleSentences.replace(RegExp(expression, 'gi'),`<b>${expression}</b>`)}</span><br><span class='chn_sent'>${examplePronouciation}</span><br><span class='mdn_sent'>${exampleMandrinStr}</span></li>`;
+                        let examples = subList.querySelectorAll('li');
+                        for (const [index, example] of examples.entries()) {
+                            if (index >= this.maxexample) break;
+                            let exampleText = T(example).replace(RegExp(expression, 'gi'), `<b>${expression}</b>`);
+                            definition += `<li class='sent'><span class='eng_sent'>${exampleText}</span></li>`;
                         }
                         definition += '</ul>';
                     }
+
+                    // 同義詞（如果有）
+                    let synonymNode = item.querySelector('p .bg-stone-500');
+                    if (synonymNode) {
+                        let synonyms = Array.from(item.querySelectorAll('p a')).map(a => T(a)).join('、');
+                        definition += `<br><span class='synonym'>同 ${synonyms}</span>`;
+                    }
+
+                    definitions.push(definition);
                 }
-                definition && definitions.push(definition);
             }
+
             let css = this.renderCSS();
             notes.push({
                 css,
-                expression,
-                reading,
+                expression: `${dictName}: ${expression}`,
+                reading: reading + (frequency ? ` ${frequency}` : ''),
                 definitions,
                 audios
             });
@@ -128,20 +118,20 @@ class amis_moedict {
     }
 
     renderCSS() {
-        let css = `
+        return `
             <style>
-                div.phrasehead{margin: 2px 0;font-weight: bold;}
+                div.phrasehead {margin: 2px 0; font-weight: bold;}
                 span.star {color: #FFBB00;}
-                span.pos  {text-transform:lowercase; font-size:0.9em; margin-right:5px; padding:2px 4px; color:white; background-color:#0d47a1; border-radius:3px;}
-                span.tran {margin:0; padding:0;}
-                span.eng_tran {margin-right:3px; padding:0;}
-                span.chn_tran {color:#0d47a1;}
-                ul.sents {font-size:0.8em; list-style:square inside; margin:3px 0;padding:5px;background:rgba(13,71,161,0.1); border-radius:5px;}
-                li.sent  {margin:0; padding:0;}
-                span.eng_sent {margin-right:5px;}
-                span.chn_sent {color:#0d47a1;}
-                span.mdn_sent {color:#7d7979;}
+                span.pos {text-transform: lowercase; font-size: 0.9em; margin-right: 5px; padding: 2px 4px; color: white; background-color: #0d47a1; border-radius: 3px;}
+                span.tran {margin: 0; padding: 0;}
+                span.eng_tran {margin-right: 3px; padding: 0;}
+                span.chn_tran {color: #0d47a1;}
+                span.synonym {color: #666; font-size: 0.9em;}
+                ul.sents {font-size: 0.8em; list-style: square inside; margin: 3px 0; padding: 5px; background: rgba(13,71,161,0.1); border-radius: 5px;}
+                li.sent {margin: 0; padding: 0;}
+                span.eng_sent {margin-right: 5px;}
+                span.chn_sent {color: #0d47a1;}
+                span.mdn_sent {color: #7d7979;}
             </style>`;
-        return css;
     }
 }
