@@ -46,7 +46,7 @@ class amis_moedict {
 
         // 詞條名稱
         let expression = T(doc.querySelector('h1')) || word;
-        expression = expression.replace(/（詞幹）/, '').trim();
+        expression = expression.trim(); // 保留「（詞幹）」
 
         // 所有字典區塊
         let entries = doc.querySelectorAll('.dictionaries') || [];
@@ -147,10 +147,13 @@ class amis_moedict {
                 span.eng_sent {margin-right: 5px;}
                 span.chn_sent {color: #0d47a1;}
                 span.mdn_sent {color: #7d7979;}
-                /* 調整 ODH 視窗尺寸 */
+                /* 調整 ODH 視窗尺寸，根據內容自適應 */
                 .odh-result-window {
-                    width: 600px !important;
-                    max-height: 400px !important;
+                    min-width: 400px !important;
+                    max-width: 800px !important;
+                    min-height: 200px !important;
+                    max-height: 80vh !important;
+                    height: auto !important;
                     overflow-y: auto !important;
                 }
             </style>`;
