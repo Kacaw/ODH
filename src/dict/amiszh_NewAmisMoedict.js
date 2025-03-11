@@ -78,41 +78,56 @@ class amis_moedict {
                     let definition = '';
 
                     // 主定義
-                    let mainDef = T(item.querySelector('p:first-child')) || '';
-                    definition += `<span class='tran'>${mainDef}</span>`;
+                    let mainDefNode = item.querySelector('p:first-child');
+                    let mainDef = mainDefNode ? T(mainDefNode) : '';
+                    if (mainDef) {
+                        definition += `<span class='tran'>${mainDef}</span>`;
+                    }
 
                     // 例句或子定義
                     let subList = item.querySelector('ul.list-disc');
                     if (subList) {
-                        definition += '<ul class="sents">';
                         let examples = subList.querySelectorAll('li');
-                        for (const [index, example] of examples.entries()) {
-                            if (index >= this.maxexample) break;
-                            let exampleText = T(example).replace(RegExp(expression, 'gi'), `<b>${expression}</b>`);
-                            definition += `<li class='sent'><span class='eng_sent'>${exampleText}</span></li>`;
+                        if (examples.length > 0) {
+                            definition += '<ul class="sents">';
+                            for (const [index, example] of examples.entries()) {
+                                if (index >= this.maxexample) break;
+                                let exampleText = T(example).replace(RegExp(expression, 'gi'), `<b>${expression}</b>`);
+                                if (exampleText) {
+                                    definition += `<li class='sent'><span class='eng_sent'>${exampleText}</span></li>`;
+                                }
+                            }
+                            definition += '</ul>';
                         }
-                        definition += '</ul>';
                     }
 
                     // 同義詞（如果有）
                     let synonymNode = item.querySelector('p .bg-stone-500');
                     if (synonymNode) {
                         let synonyms = Array.from(item.querySelectorAll('p a')).map(a => T(a)).join('、');
-                        definition += `<br><span class='synonym'>同 ${synonyms}</span>`;
+                        if (synonyms) {
+                            definition += `<br><span class='synonym'>同 ${synonyms}</span>`;
+                        }
                     }
 
-                    definitions.push(definition);
+                    // 只有當 definition 有內容時才加入
+                    if (definition.trim()) {
+                        definitions.push(definition);
+                    }
                 }
             }
 
-            let css = this.renderCSS();
-            notes.push({
-                css,
-                expression: `${dictName}: ${expression}`,
-                reading: reading + (frequency ? ` ${frequency}` : ''),
-                definitions,
-                audios
-            });
+            // 只有當有有效定義時才生成該字典的結果
+            if (definitions.length > 0) {
+                let css = this.renderCSS();
+                notes.push({
+                    css,
+                    expression: `${dictName}: ${expression}`,
+                    reading: reading + (frequency ? ` ${frequency}` : ''),
+                    definitions,
+                    audios
+                });
+            }
         }
         return notes;
     }
@@ -132,6 +147,12 @@ class amis_moedict {
                 span.eng_sent {margin-right: 5px;}
                 span.chn_sent {color: #0d47a1;}
                 span.mdn_sent {color: #7d7979;}
+                /* 調整 ODH 視窗尺寸 */
+                .odh-result-window {
+                    width: 600px !important;
+                    max-height: 400px !important;
+                    overflow-y: auto !important;
+                }
             </style>`;
     }
 }
